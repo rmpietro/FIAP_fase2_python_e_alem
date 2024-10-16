@@ -11,22 +11,26 @@
 ## Nome do grupo
 
 ## 👨‍🎓 Integrantes: 
-- <a href="https://www.linkedin.com/company/inova-fusca">Nome do integrante 1</a>
-- <a href="https://www.linkedin.com/company/inova-fusca">Nome do integrante 2</a>
-- <a href="https://www.linkedin.com/company/inova-fusca">Nome do integrante 3</a> 
-- <a href="https://www.linkedin.com/company/inova-fusca">Nome do integrante 4</a> 
-- <a href="https://www.linkedin.com/company/inova-fusca">Nome do integrante 5</a>
+- <a href="https://www.linkedin.com/company/inova-fusca">Gustavo di Primio Valtrick de Almeida</a>
+- <a href="https://www.linkedin.com/company/inova-fusca">Iago Cotta Locatelli Guinatti</a>
+- <a href="https://www.linkedin.com/company/inova-fusca">Pedro Scofield da Cunha</a> 
+- <a href="https://www.linkedin.com/company/inova-fusca">Rodrigo Mastropietro</a> 
+- <a href="https://www.linkedin.com/company/inova-fusca">Tiago de Andrade Bastos</a>
 
 ## 👩‍🏫 Professores:
 ### Tutor(a) 
-- <a href="https://www.linkedin.com/company/inova-fusca">Nome do Tutor</a>
+- <a href="https://www.linkedin.com/in/lucas-gomes-moreira-15a8452a/">Lucas Gomes Moreira</a>
 ### Coordenador(a)
-- <a href="https://www.linkedin.com/company/inova-fusca">Nome do Coordenador</a>
+- <a href="https://www.linkedin.com/in/profandregodoi/">André Godoi</a>
 
 
 ## 📜 Descrição
 
-*Descreva seu projeto com base no texto do PBL (até 600 palavras)*
+Descrição
+O agronegócio desempenha um papel crucial na economia brasileira, representando cerca de 25% do PIB total em 2023 e 49% das exportações do país. Com a produção estimada em aproximadamente 300 milhões de toneladas de grãos anualmente, segundo dados da Companhia Nacional de Abastecimento (Conab), é vital que a eficiência no armazenamento e manejo desses produtos seja garantida.
+Infelizmente, problemas de armazenamento podem resultar em perdas significativas, que variam de 5% a 15% da produção total. Com isso em mente, nosso projeto visa desenvolver um Sistema de Gerenciamento de Silos que otimize o controle e a qualidade dos grãos armazenados.
+Este sistema permitirá o registro e monitoramento de dados essenciais, como umidade, temperatura e pH dos grãos, possibilitando que os produtores tenham uma visão clara da qualidade dos produtos armazenados. Através da coleta e análise dessas informações, o sistema buscará reduzir as perdas, contribuindo assim para uma gestão mais eficiente e sustentável.
+O projeto não só se alinha com as necessidades do setor, mas também integra os conteúdos estudados nas aulas, como subalgorítmos para a manipulação dos dados, estruturas de dados adequadas para organização das informações, manipulação de arquivos e conexão com banco de dados Oracle. Ao automatizar processos e fornecer dados críticos, esperamos oferecer uma solução inovadora que beneficiará não apenas os produtores, mas também o setor agro como um todo.
 
 
 ## 📁 Estrutura de pastas
