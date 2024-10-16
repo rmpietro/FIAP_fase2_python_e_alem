@@ -3,17 +3,20 @@ import platform
 
 def exibir_menu() -> None:
     print(
-    """
-    1 - Inserir
-    2 - Ler Registro
-    3 - Listar Todos
-    4 - Alterar
-    5 - Excluir
-    6 - Gerar Relatório
-    7 - Exportar Dados do Banco
-    8 - Importar Dados para o Banco
-    9 - Sair
-    """    
+        """
+        MENU PRINCIPAL
+        ----------------------------------
+        1 - Inserir novo Silo
+        2 - Ler Registro de Silo
+        3 - Listar Todos os Silos
+        4 - Alterar Silo Existente
+        5 - Excluir Silo Existente
+        6 - Gerar Relatório de Silos
+        7 - Exportar Dados do Banco (Backup JSON)
+        8 - Importar Dados para o Banco (Backup JSON)
+        9 - Sair
+        ----------------------------------
+        """
     )
 
 def limpar_console() -> None:
@@ -25,6 +28,7 @@ def limpar_console() -> None:
 
 def exibir_tipo() -> None:
     print("""
+    Lista de produtos disponíveis:
 1 - Milho
 2 - Soja
 3 - Arroz

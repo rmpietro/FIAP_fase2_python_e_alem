@@ -3,342 +3,92 @@ import pandas as pd
 import os
 import json
 from datetime import datetime
+from pathlib import Path
 
+oracledb.defaults.fetch_lobs = False
 
-#         Tipo, Nome,     Preço por tonelada em real, faixa de umidade, faixa de temperatura e faixa de ph
-milho  = (1,    "Milho",  1440.97,                    13.0, 14.1,       15.0, 25.1,            6.0, 7.6)
-soja   = (2,    "Soja",   1784.67,                    11.0, 13.1,       15.0, 25.1,            6.0, 7.6)
-arroz  = (3,    "Arroz",  1255.00,                    12.0, 14.1,       10.0, 25.1,            6.0, 7.1)
-trigo  = (4,    "Trigo",  1432.76,                    12.0, 14.1,       10.0, 25.1,            5.5, 6.6)
-feijao = (5,    "Feijão", 3103.00,                    11.0, 13.1,       15.0, 25.1,            5.8, 6.9)
-#         0     1         2                           3     4           5     6                7    8
-#         Posições dos valores na tupla
-conectado = bool
+# Definição de produtos (milho, soja, arroz, trigo, feijão)
+milho  = (1, "Milho", 1440.97, 13.0, 14.1, 15.0, 25.1, 6.0, 7.6)
+soja   = (2, "Soja", 1784.67, 11.0, 13.1, 15.0, 25.1, 6.0, 7.6)
+arroz  = (3, "Arroz", 1255.00, 12.0, 14.1, 10.0, 25.1, 6.0, 7.1)
+trigo  = (4, "Trigo", 1432.76, 12.0, 14.1, 10.0, 25.1, 5.5, 6.6)
+feijao = (5, "Feijão", 3103.00, 11.0, 13.1, 15.0, 25.1, 5.8, 6.9)
 
+conectado = False
 conn = None
 
-inst_cadastro = None
-inst_consulta = None
-inst_alteracao = None
-inst_exclusao = None
-
-
 def set_connection(usuario: str, senha: str) -> bool:
-    global conn, conectado, inst_cadastro, inst_consulta, inst_alteracao, inst_exclusao
+    global conn, conectado
     try:
         conn = oracledb.connect(user=usuario, password=senha, dsn='oracle.fiap.com.br:1521/ORCL')
-
     except oracledb.DatabaseError as Error:
-        print("Erro ao estabelcer conexão: " + str(Error))
+        print(f"Erro ao estabelecer conexão: {Error}")
         conectado = False
         return False
-
-    except Exception as Error:
-        print("Erro: " + str(Error))
-        conectado = False
-        return False
-    
     else:
         conectado = True
-        
-        inst_cadastro = conn.cursor()
-        inst_consulta = conn.cursor()
-        inst_alteracao = conn.cursor()
-        inst_exclusao = conn.cursor()
         return True
+
+def check_table_exists():
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""SELECT COUNT(*) FROM user_Tables WHERE table_name = 'SILOS'""")
+            if cursor.fetchone()[0] == 0:
+                print("Estrutura de Banco de Dados não encontrada.")
+                print("Criando tabela \"SILOS\" no Banco de Dados conectado...")
+                diretorio_raiz = os.path.dirname(os.path.abspath(__file__))
+                caminho = os.path.join(diretorio_raiz, 'arquivos', 'silos.sql')
+                with open(caminho, "r") as arq:
+                    sql_ddl = arq.read()
+                    cursor.execute(sql_ddl)
+                    conn.commit()
+                    print("Tabela SILOS criada com sucesso!")
+    except oracledb.DatabaseError as Error:
+        print(f"Erro ao buscar tabela SILOS: {Error}")
+        return False
 
 def close_connection():
     if conn:
         try:
             conn.close()
         except oracledb.DatabaseError as e:
-            print(f"Erro ao fechar a conexão: {e}\n")
+            print(f"Erro ao fechar a conexão: {e}")
 
-def insert(tipo: int, quantidade: float, silo_nome: str, endereco: str,
-            capacidade: float, umidade: float, temperatura: float, ph: float, obs: str) -> bool:
+# Função para inserir registro no banco de dados
+def insert(tipo: int, quantidade: float, silo_nome: str, endereco: str, capacidade: float,
+           umidade: float, temperatura: float, ph: float, obs: str) -> bool:
     print("----- CADASTRAR SILO -----\n")
     try:
         with conn.cursor() as cursor:
-            match tipo:
-                case 1:
-                    nome_produto = milho[1]
-                case 2:
-                    nome_produto = soja[1]
-                case 3:
-                    nome_produto = arroz[1]
-                case 4:
-                    nome_produto = trigo[1]
-                case 5:
-                    nome_produto = feijao[1]
-                case _:
-                    nome_produto = ''
-            
-            cadastro = f""" INSERT INTO SILOS(nome_produto, tipo_produto, quantidade, silo_nome,
-                endereco, capacidade, data_hora_registro, umidade, temperatura, ph, observacoes) 
-                VALUES(:1, :2, :3, :4, :5, :6, :7, :8, :9, :10, :11) """
-            
-            cursor.execute(cadastro, (nome_produto, tipo, quantidade, silo_nome, endereco, capacidade, 
-                datetime.now(), umidade, temperatura, ph, obs))
-            conn.commit()
+            if tipo == 1:
+                nome_produto = milho[1]
+            elif tipo == 2:
+                nome_produto = soja[1]
+            elif tipo == 3:
+                nome_produto = arroz[1]
+            elif tipo == 4:
+                nome_produto = trigo[1]
+            elif tipo == 5:
+                nome_produto = feijao[1]
+            else:
+                nome_produto = ''
 
+            cadastro = """ 
+                INSERT INTO SILOS(nome_produto, tipo_produto, quantidade, silo_nome, endereco, capacidade, 
+                                  data_hora_registro, umidade, temperatura, ph, observacoes) 
+                VALUES (:1, :2, :3, :4, :5, :6, :7, :8, :9, :10, :11) 
+            """
+            cursor.execute(cadastro, (nome_produto, tipo, quantidade, silo_nome, endereco, capacidade,
+                                      datetime.now(), umidade, temperatura, ph, obs))
+            conn.commit()
     except oracledb.DatabaseError as Error:
         print(f"Erro ao gravar registro: {Error}")
-        return False
-    except Exception as Error:
-        print(f"Erro inesperado: {Error}")
         return False
     else:
         print("Registro gravado com sucesso!")
         return True
 
-"""
-def insert(tipo: int, quantidade: float, silo_nome: str, endereco: str,
-            capacidade: float, umidade: float, temperatura: float, ph: float, obs: str) -> bool:
-        print("----- CADASTRAR SILO -----\n")
-
-        global conectado, inst_cadastro, conn
-
-        match tipo:
-            case 1:
-                nome_produto = milho[1]
-            case 2:
-                nome_produto = soja[1]
-            case 3:
-                nome_produto = arroz[1]
-            case 4:
-                nome_produto = trigo[1]
-            case 5:
-                nome_produto = feijao[1]
-            case _:
-                nome_produto = ''
-
-        cadastro = f"" " INSERT INTO SILOS(nome_produto, tipo_produto, quantidade, silo_nome,
-          endereco, capacidade, data_hora_registro, umidade, temperatura, ph, observacoes) 
-          VALUES(:1, :2, :3, :4, :5, :6, :7, :8, :9, :10, :11) 
-          "" "
-
-        try:
-            inst_cadastro.execute(cadastro, (nome_produto, tipo, quantidade, silo_nome, endereco, capacidade, 
-                                         datetime.now(), umidade, temperatura, ph, obs))
-            conn.commit()
-        except oracledb.DatabaseError as Error:
-            print("Erro ao gravar registro: " + str(Error))
-            conectado = False
-            return False
-        except Exception as Error:
-            print("Erro: " + str(Error))
-            return False
-        else:
-            print("Registro gravado com sucesso!")
-            return True
-"""
-
-
-def get_all() -> None:
-    print("----- LISTAR SILOS -----\n")
-
-    global conectado
-
-    lista_silos = list()
-
-    leitura = f""" SELECT * FROM SILOS """
-
-    try:
-        inst_consulta.execute(leitura)
-        data = inst_consulta.fetchall()
-
-        for dt in data:
-            lista_silos.append(dt)
-
-        #dados_df = pd.DataFrame.from_records(lista_silos, columns=['id', 'silo_nome'], index='id')
-        dados_df = pd.DataFrame.from_records(lista_silos, columns=['id', 'nome_produto', 'tipo_produto', 'quantidade', 'silo_nome', 'endereco', 'capacidade', 'data_hora_registro', 'umidade', 'temperatura', 'ph', 'observacoes'], index='id')
-    
-    except oracledb.DatabaseError as Error:
-        conectado = False
-        print("Erro ao ler registros: " + str(Error))
-    except Exception as Error:
-        print("Erro: " + str(Error))
-    else:
-        if dados_df.empty:
-            print(f"Não há registros")
-        else:
-            print(dados_df)
-
-def get(id: int) -> list:
-
-    global conectado
-
-    lista_silos = list()
-
-    leitura = f""" SELECT * FROM SILOS WHERE id = {id}"""
-
-    try:
-        inst_consulta.execute(leitura)
-        data = inst_consulta.fetchall()
-
-        for dt in data:
-            lista_silos.append(dt)
-
-        dados_df = pd.DataFrame.from_records(lista_silos, columns=['id', 'nome_produto', 'tipo_produto', 'quantidade', 'silo_nome', 'endereco', 'capacidade', 'data_hora_registro', 'umidade', 'temperatura', 'ph', 'observacoes'], index='id')
-    
-    except oracledb.DatabaseError as error:
-        print("Erro ao ler registros: " + str(error))
-        conectado = False
-        return []
-    except Exception as error:
-        print("Erro: " + str(error))
-        return []
-    else:
-        if dados_df.empty:
-            print(f"Não há registros")
-        else:
-            linha = dados_df.iloc[0]
-            cultura_escolhida = tuple()
-
-            match linha.iloc[1]:
-                case 1:
-                    cultura_escolhida = milho
-                case 2:
-                    cultura_escolhida = soja
-                case 3:
-                    cultura_escolhida = arroz
-                case 4:
-                    cultura_escolhida = trigo
-                case 5:
-                    cultura_escolhida = feijao
-
-            print(f""""
-                Id: {id}
-                Nome do Produto: {linha.iloc[0]}
-                Tipo do Produto: {linha.iloc[1]}
-                Quantidade: {linha.iloc[2]}
-                Nome do Silo: {linha.iloc[3]}
-                Endereço: {linha.iloc[4]}
-                Capacidade: {linha.iloc[5]}
-                Data e Hora de Registro: {linha.iloc[6]}
-                Umidade: {linha.iloc[7]}
-                Temperatura: {linha.iloc[8]}
-                PH: {linha.iloc[9]}
-                Observações: {linha.iloc[10]}
-                Valor: {linha.iloc[2] * cultura_escolhida[2]}
-            """)
-            
-            print("*** SITUAÇÃO DO SILO***")
-            situacao = True
-            
-            umidade_arredondada = round(linha.iloc[7], 1)
-            temperatura_arredondada = round(linha.iloc[8], 1)
-            ph_arredondado = round(linha.iloc[9], 1)
-
-            print("Situação da umidade: ", end="")
-            if umidade_arredondada < cultura_escolhida[3] or umidade_arredondada > cultura_escolhida[4]:
-                situacao = False
-                if umidade_arredondada > cultura_escolhida[3]:
-                    print("Anormal - Umidade acima do ideal - Pode causar mofo e deterioração dos grãos.")
-                else:
-                    print("Anormal - Umidade abaixo do ideal - Pode resultar em secagem excessiva e perda de qualidade.")
-            else:
-                print("Normal")
-
-            print("Situação da temperatura: ", end="")
-            if temperatura_arredondada < cultura_escolhida[5] or temperatura_arredondada > cultura_escolhida[6]:
-                situacao = False
-                if temperatura_arredondada > cultura_escolhida[5]:
-                    print("Anormal - Temperatura acima do ideal - Pode levar ao crescimento de fungos e deterioração rápida dos produtos.")
-                else:
-                    print("Anormal - Temperatura abaixo do ideal - Pode resultar em dormência de sementes e redução na qualidade.")
-            else:
-                print("Normal")
-
-            print("Situação do pH: ", end="")
-            if ph_arredondado < cultura_escolhida[7] or ph_arredondado > cultura_escolhida[8]:
-                situacao = False
-                if ph_arredondado > cultura_escolhida[7]:
-                    print("Anormal - pH acima do ideal - Pode causar toxicidade para as plantas e afetar a qualidade dos grãos.")
-                else:
-                    print("Anormal - pH abaixo do ideal - Pode resultar em deficiências nutricionais e prejudicar o desenvolvimento dos produtos.")
-            else:
-                print("Normal")
-
-            if situacao:
-                print("\nSituação geral: Normal")
-            else:
-                print("\nO silo apresenta condições anormais que podem afetar a qualidade dos grãos. É necessário verificar e ajustar os parâmetros!")
-
-            return lista_silos
-
-def delete(id: int) -> bool:
-    print('----- APAGAR -----')
-    try:
-        with conn.cursor() as cursor:
-            exclusao = f"DELETE FROM SILOS WHERE id = :1"
-            cursor.execute(exclusao, (id,))
-            conn.commit()
-
-    except oracledb.DatabaseError as Error:
-        print(f"Erro ao excluir: {Error}")
-        return False
-    except Exception as Error:
-        print(f"Erro inesperado: {Error}")
-        return False
-    else:
-        print("Registro apagado com sucesso!")
-        return True
-
-
-"""
-def delete(id: int) -> bool:
-        print('----- APAGAR -----')
-
-        global conectado
-
-        exclusao = f"" " DELETE FROM SILOS WHERE id = {id}"" "
-
-        try:
-            inst_exclusao.execute(exclusao)
-            conn.commit()
-        except oracledb.DatabaseError as Error:
-            print("Erro ao excluir: " + str(Error))
-            conectado = False
-            return False
-        except Exception as Error:
-            print("Erro: " + str(Error))
-            return False
-        else:
-            print("Apagado com sucesso")
-            return True
-"""
-
-
-def get_id_nome() -> None:
-    print("----- LISTAR SILOS -----\n")
-
-    global conectado
-    
-    lista_silos = list()
-
-    leitura = f""" SELECT id, silo_nome FROM SILOS """
-
-    try:
-        inst_consulta.execute(leitura)
-        data = inst_consulta.fetchall()
-
-        for dt in data:
-            lista_silos.append(dt)
-
-        dados_df = pd.DataFrame.from_records(lista_silos, columns=['id', 'silo_nome'], index='id')
-       
-    except oracledb.DatabaseError as Error:
-        conectado = False
-        print("Erro ao ler registros: " + str(Error))
-    except Exception as Error:
-        print("Erro: " + str(Error))
-    else:
-        if dados_df.empty:
-            print(f"Não há registros")
-        else:
-            print(dados_df)
-
+#Função para alterar um registro no banco de dados
 def update(dados_silo: list) -> bool:
     print("----- ALTERAR -----\n")
     try:
@@ -346,7 +96,7 @@ def update(dados_silo: list) -> bool:
             alteracao = f"""UPDATE SILOS SET nome_produto = :1, tipo_produto = :2, quantidade = :3, 
                 silo_nome = :4, endereco = :5, capacidade = :6, umidade = :7, temperatura = :8, 
                 ph = :9, observacoes = :10 WHERE id = :11"""
-            
+
             match dados_silo[1]:
                 case 1:
                     nome_produto = milho[1]
@@ -361,9 +111,9 @@ def update(dados_silo: list) -> bool:
                 case _:
                     nome_produto = ''
 
-            cursor.execute(alteracao, (nome_produto,  dados_silo[1], dados_silo[2], 
+            cursor.execute(alteracao, (nome_produto,  dados_silo[1], dados_silo[2],
                                        dados_silo[3], dados_silo[4], dados_silo[5],
-                                       dados_silo[6], dados_silo[7], dados_silo[8], 
+                                       dados_silo[6], dados_silo[7], dados_silo[8],
                                        dados_silo[9], dados_silo[0]))
             conn.commit()
 
@@ -377,59 +127,75 @@ def update(dados_silo: list) -> bool:
         print("Registro alterado com sucesso!")
         return True
 
-
-"""
-def update(dados_silo: list) -> bool:
-    global conectado
+# Função para listar todos os registros
+def get_all() -> None:
+    print("----- LISTAR SILOS -----\n")
     try:
-        print("----- ALTERAR -----\n")
-
-        lista_dados = [] 
-
-        consulta = f"" " SELECT * FROM SILOS WHERE id = {dados_silo[0]}"" "
-        inst_consulta.execute(consulta)
-        data = inst_consulta.fetchall()
-
-        for dt in data:
-            lista_dados.append(dt)
-
-        if len(lista_dados) == 0: 
-            print(f"Não existem silos com o ID = {dados_silo[0]}")
-        else:
-
-            alteracao = f"" " UPDATE SILOS
-                SET nome_produto = {dados_silo[1]}, 
-                tipo_produto = {dados_silo[2]}, 
-                quantidade = {dados_silo[3]}, 
-                silo_nome = {dados_silo[4]},
-                endereco = {dados_silo[5]}, 
-                capacidade = {dados_silo[6]},  
-                umidade = {dados_silo[8]}, 
-                temperatura = {dados_silo[9]}, 
-                ph = {dados_silo[10]}, 
-                observacoes = {dados_silo[11]}) 
-                WHERE id = {dados_silo[0]}
-                "" "
-            inst_alteracao.execute(alteracao)
-            conn.commit()
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM SILOS")
+            data = cursor.fetchall()
+            df = pd.DataFrame(data, columns=['id', 'nome_produto', 'tipo_produto', 'quantidade', 'silo_nome',
+                                             'endereco', 'capacidade', 'data_hora_registro', 'umidade',
+                                             'temperatura', 'ph', 'observacoes'])
+            if df.empty:
+                print("Não há registros.")
+            else:
+                print(df)
     except oracledb.DatabaseError as Error:
-        print("Erro ao excluir: " + str(Error))
-        return False
-    except Exception as Error:
-        print("Erro: " + str(Error))
-        return False
-    else:
-        print("Alterado com sucesso")
+        print(f"Erro ao ler registros: {Error}")
+
+# Função para buscar registro por ID
+def get(id: int) -> None:
+    print(f"----- CONSULTAR SILO (ID: {id}) -----\n")
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(f"SELECT * FROM SILOS WHERE id = {id}")
+            data = cursor.fetchall()
+            df = pd.DataFrame(data, columns=['id', 'nome_produto', 'tipo_produto', 'quantidade', 'silo_nome',
+                                             'endereco', 'capacidade', 'data_hora_registro', 'umidade',
+                                             'temperatura', 'ph', 'observacoes'])
+            if df.empty:
+                print(f"Não há registro com o ID: {id}")
+            else:
+                print(df)
+    except oracledb.DatabaseError as Error:
+        print(f"Erro ao ler registro: {Error}")
+
+# Função para apagar registro por ID
+def delete(id: int) -> bool:
+    print(f"----- APAGAR SILO (ID: {id}) -----")
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("DELETE FROM SILOS WHERE id = :1", (id,))
+            conn.commit()
+        print("Registro apagado com sucesso!")
         return True
-"""
+    except oracledb.DatabaseError as Error:
+        print(f"Erro ao excluir: {Error}")
+        return False
+
+# Função para listar IDs e Nomes dos Silos
+def get_id_nome() -> None:
+    print("----- LISTAR SILOS (ID e Nome) -----\n")
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id, silo_nome FROM SILOS")
+            data = cursor.fetchall()
+            df = pd.DataFrame(data, columns=['id', 'silo_nome'])
+            if df.empty:
+                print("Não há registros.")
+            else:
+                print(df)
+    except oracledb.DatabaseError as Error:
+        print(f"Erro ao ler registros: {Error}")
 
 def gerar_relatorio() -> bool:
     def margem(i: int) -> str:
         retorno = "    "
-        for i in range(0, i):
+        for _ in range(0, i):
             retorno += "    "
         return retorno
-    
+
     def obter_valor_por_tipo(tipo: int) -> float:
         valores_por_tipo = {
             1: 1440.97,  # Milho
@@ -439,99 +205,78 @@ def gerar_relatorio() -> bool:
             5: 3103.00   # Feijão
         }
         return valores_por_tipo.get(tipo, 0)
-    
-    def condicao_adequada(tipo: int, valor: float, tipo_validacao:int):
 
+    def condicao_adequada(tipo: int, valor: float, tipo_validacao: int) -> bool:
         cultura_escolhida = tuple()
 
-        match tipo:
-            case 1:
-                cultura_escolhida = milho
-            case 2:
-                cultura_escolhida = soja
-            case 3:
-                cultura_escolhida = arroz
-            case 4:
-                cultura_escolhida = trigo
-            case 5:
-                cultura_escolhida = feijao
+        if tipo == 1:
+            cultura_escolhida = milho
+        elif tipo == 2:
+            cultura_escolhida = soja
+        elif tipo == 3:
+            cultura_escolhida = arroz
+        elif tipo == 4:
+            cultura_escolhida = trigo
+        elif tipo == 5:
+            cultura_escolhida = feijao
 
-        match tipo_validacao:
-            case 1:
-                return cultura_escolhida[3] <= valor <= cultura_escolhida[4]
-            case 2:
-                return cultura_escolhida[5] <= valor <= cultura_escolhida[6]
-            case 3:
-                return cultura_escolhida[7] <= valor <= cultura_escolhida[8]
-            
-    global conectado
+        if tipo_validacao == 1:
+            return cultura_escolhida[3] <= valor <= cultura_escolhida[4]
+        elif tipo_validacao == 2:
+            return cultura_escolhida[5] <= valor <= cultura_escolhida[6]
+        elif tipo_validacao == 3:
+            return cultura_escolhida[7] <= valor <= cultura_escolhida[8]
 
-    diretorio_raiz = os.path.dirname(os.path.abspath(__file__))
-    caminho = os.path.join(diretorio_raiz, 'arquivos', 'relatorio.txt')
     try:
+        diretorio_raiz = os.path.dirname(os.path.abspath(__file__))
+        caminho = os.path.join(diretorio_raiz, 'arquivos', 'relatorio.txt')
+
         with open(caminho, "w") as arq:
             arq.seek(0)
             texto = "Relatório dos silos: \n\n"
-            
+
             texto += margem(0) + "* Listagem de silos:\n"
 
             lista_silos = list()
             leitura = "SELECT * FROM SILOS"
 
-            try:
+            with conn.cursor() as cursor:
+                cursor.execute(leitura)
+                data = cursor.fetchall()
 
-                inst_consulta.execute(leitura)
-                data = inst_consulta.fetchall()
+            for dt in data:
+                lista_silos.append(dt)
 
-                for dt in data:
-                    lista_silos.append(dt)
+            df = pd.DataFrame(lista_silos, columns=['id', 'nome_produto', 'tipo_produto', 'quantidade', 'silo_nome',
+                                                    'endereco', 'capacidade', 'data_hora_registro', 'umidade',
+                                                    'temperatura', 'ph', 'observacoes'])
 
-
-                dados_df = pd.DataFrame.from_records(lista_silos, columns=['id', 'nome_produto', 'tipo_produto', 'quantidade', 'silo_nome', 'endereco', 'capacidade', 'data_hora_registro', 'umidade', 'temperatura', 'ph', 'observacoes'], index='id')
-    
-                dados_df["valor_tonelada"] = dados_df["tipo_produto"].apply(obter_valor_por_tipo)
-                dados_df["valor_total"] = dados_df["quantidade"] * dados_df["valor_tonelada"]
-            except oracledb.DatabaseError as Error:
-                print("Erro ao ler registros: " + str(Error))
-                conectado = False
-                return False
-            except Exception as Error:
-                print("Erro: " + str(Error))
-                return False
+            if df.empty:
+                texto += "Não há registros no banco de dados\n"
             else:
-                if dados_df.empty:
-                    texto += "Não há registros no banco de dados"
-                    arq.write(texto)
-                    return True
-                else:
-                    texto += dados_df.to_string()
-                    texto += "\n\n"
+                texto += df.to_string() + "\n\n"
 
-            texto += margem(0) + "* Valor total em mercadorias: " + str(dados_df["valor_total"].sum()) + "\n\n"
+                texto += margem(0) + "* Valor total em mercadorias: R$" + str((df['quantidade'] * df['tipo_produto'].apply(obter_valor_por_tipo)).sum()) + "\n\n"
 
-            texto += margem(0) + "* Silos com umidade inadequada:\n"
+                texto += margem(0) + "* Silos com umidade inadequada:\n"
+                for _, linha in df.iterrows():
+                    if not condicao_adequada(linha['tipo_produto'], linha['umidade'], 1):
+                        texto += margem(1) + "* " + linha['silo_nome'] + "\n"
 
-            for _, dado_df in dados_df.iterrows():
-                if not condicao_adequada(dado_df["tipo_produto"], dado_df["quantidade"], 1):
-                    texto += margem(1) + "* " + dado_df["silo_nome" + "\n"]
-            texto += "\n\n"
+                texto += margem(0) + "* Silos com temperatura inadequada:\n"
+                for _, linha in df.iterrows():
+                    if not condicao_adequada(linha['tipo_produto'], linha['temperatura'], 2):
+                        texto += margem(1) + "* " + linha['silo_nome'] + "\n"
 
-            texto += margem(0) + "* Silos com temperatura inadequada:\n"
-
-            for _, dado_df in dados_df.iterrows():
-                if not condicao_adequada(dado_df["tipo_produto"], dado_df["quantidade"], 2):
-                    texto += margem(1) + "* " + dado_df["silo_nome" + "\n"]
-            texto += "\n\n"
-
-            texto += margem(0) + "* Silos com pH inadequado:\n"
-
-            for _, dado_df in dados_df.iterrows():
-                if not condicao_adequada(dado_df["tipo_produto"], dado_df["quantidade"], 3):
-                    texto += margem(1) + "* " + dado_df["silo_nome" + "\n"]
-            texto += "\n\n"
-            
+                texto += margem(0) + "* Silos com pH inadequado:\n"
+                for _, linha in df.iterrows():
+                    if not condicao_adequada(linha['tipo_produto'], linha['ph'], 3):
+                        texto += margem(1) + "* " + linha['silo_nome'] + "\n"
 
             arq.write(texto)
+
+        print("Relatório gerado com sucesso!")
+        return True
 
     except FileNotFoundError as e:
         print(f"Arquivo não encontrado: {e}")
@@ -543,133 +288,103 @@ def gerar_relatorio() -> bool:
         print(f"Ocorreu um erro inesperado: {e}")
         return False
 
+# Função de backup
 def backup():
-    """
-    global conectado
+    print("----- BACKUP -----\n")
     try:
-        diretorio_raiz = os.path.dirname(os.path.abspath(__file__))
-        caminho = os.path.join(diretorio_raiz, 'arquivos', 'relatorio.txt')
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM SILOS")
+            data = cursor.fetchall()
 
-        lista_silos = list()
+            # Capturar dinamicamente os nomes das colunas
+            colunas = [desc[0] for desc in cursor.description]
+            print(f"Colunas retornadas: {colunas}")  # Verificar as colunas
 
-        consulta = "SELECT * FROM SILOS"
-        inst_consulta.execute(consulta)
-        data = inst_consulta.fetchall()
+            # Criar DataFrame com base nas colunas retornadas
+            df = pd.DataFrame(data, columns=colunas)
 
-        dados_df = pd.DataFrame.from_records(data, columns=['id', 'nome_produto', 'tipo_produto', 'quantidade', 'silo_nome', 'endereco', 'capacidade', 'data_hora_registro', 'umidade', 'temperatura', 'ph', 'observacoes'], index='id')
-    except oracledb.DatabaseError as e:
-        print("Erro ao acessar o banco de dados:", e)
-        conectado = False
+            # Verificar se a coluna 'DATA_HORA_REGISTRO' existe antes de convertê-la
+            if 'DATA_HORA_REGISTRO' in df.columns:
+                # Converter os campos datetime (Timestamp) para string ISO
+                df['DATA_HORA_REGISTRO'] = df['DATA_HORA_REGISTRO'].apply(
+                    lambda x: x.isoformat() if isinstance(x, datetime) else x
+                )
+
+            # Converter DataFrame para lista de dicionários
+            backup_data = df.to_dict(orient='records')
+
+            # Caminho para salvar o arquivo backup.json
+            caminho = Path(__file__).parent / 'arquivos' / 'backup.json'
+            caminho.parent.mkdir(parents=True, exist_ok=True)  # Criar diretório se não existir
+
+            # Salvar dados no arquivo JSON
+            with open(caminho, 'w') as f:
+                json.dump(backup_data, f, indent=4)
+
+            print("Backup realizado com sucesso!")
+
     except Exception as e:
-        print("Erro inesperado:", e)
-    else:
-        dict_silos = dict()
+        print(f"Erro durante o backup: {e}")
 
-        dict_silos = dados_df.to_dict(orient='index')
 
-        with open(caminho, "w") as arq:
-            
-
-def backup():
-    global conectado
-    try:
-
-        consulta = "SELECT * FROM SILOS"
-        inst_consulta.execute(consulta)
-        registros = inst_consulta.fetchall()
-
-        colunas = [desc[0] for desc in inst_consulta.description]
-
-        lista_dicionarios = []
-        for registro in registros:
-            # Crie um dicionário para cada registro
-            dicionario = dict(zip(colunas, registro))
-            
-            # Converte os campos datetime para strings
-            for chave, valor in dicionario.items():
-                if isinstance(valor, datetime):
-                    dicionario[chave] = valor.isoformat()  # Converte datetime para string
-
-            lista_dicionarios.append(dicionario)
-
-        diretorio_raiz = os.path.dirname(os.path.abspath(__file__))
-        caminho = os.path.join(diretorio_raiz, 'arquivos', 'backup.json')
-
-        with open(caminho, "w") as arquivo_json:
-            json.dump(lista_dicionarios, arquivo_json, indent=4)
-
-        print("Dados salvos com sucesso em", caminho)
-
-    except oracledb.DatabaseError as e:
-        print("Erro ao acessar o banco de dados:", e)
-        conectado = False
-    except Exception as e:
-        print("Erro inesperado:", e)""""""
-
+# Função para restaurar backup
 def restaurar_backup():
     print("----- RESTAURAR BACKUP -----\n")
     try:
-        diretorio_raiz = os.path.dirname(os.path.abspath(__file__))
-        caminho = os.path.join(diretorio_raiz, 'arquivos', 'backup.json')
+        # Definir o caminho para o backup
+        caminho = Path(__file__).parent / 'arquivos' / 'backup.json'
 
+        # Verificar se o arquivo de backup existe
+        if not caminho.exists():
+            raise FileNotFoundError("Arquivo de backup não encontrado.")
+
+        # Carregar o conteúdo do arquivo JSON
         with open(caminho, "r") as arquivo_json:
             lista_dicionarios = json.load(arquivo_json)
 
+        # Verificar se o arquivo contém dados
+        if not lista_dicionarios:
+            raise ValueError("O arquivo de backup está vazio ou os dados estão mal formatados.")
+
+        # Iniciar a transação de restauração
         with conn.cursor() as cursor:
             for registro in lista_dicionarios:
-                consulta = f"" "
-                INSERT INTO SILOS (id, nome_produto, tipo_produto, quantidade, silo_nome, endereco, capacidade, 
-                data_hora_registro, umidade, temperatura, ph, observacoes)
-                VALUES (:1, :2, :3, :4, :5, :6, :7, :8, :9, :10, :11)"" "
-                
-                cursor.execute(consulta, (registro['id'], registro['nome_produto'], registro['tipo_produto'], 
-                                          registro['quantidade'], registro['silo_nome'], registro['endereco'], 
-                                          registro['capacidade'], registro['data_hora_registro'], 
-                                          registro['umidade'], registro['temperatura'], registro['ph'], 
-                                          registro['observacoes']))
+                # Certificar-se de que todos os campos estão presentes no registro, exceto 'ID'
+                required_keys = ['NOME_PRODUTO', 'TIPO_PRODUTO', 'QUANTIDADE', 'SILO_NOME', 'ENDERECO',
+                                 'CAPACIDADE', 'DATA_HORA_REGISTRO', 'UMIDADE', 'TEMPERATURA', 'PH', 'OBSERVACOES']
+
+                # Filtrar o registro para remover o campo 'ID' e garantir que os campos necessários estejam presentes
+                registro_filtrado = {key: registro[key] for key in required_keys if key in registro}
+
+                # Verificar se o registro contém todos os campos necessários
+                if len(registro_filtrado) != len(required_keys):
+                    raise ValueError(f"Registro incompleto encontrado: {registro}")
+
+                # Preparar a consulta com os 11 valores (excluindo o 'ID')
+                consulta = """
+                    INSERT INTO SILOS (NOME_PRODUTO, TIPO_PRODUTO, QUANTIDADE, SILO_NOME, ENDERECO, CAPACIDADE, 
+                                       DATA_HORA_REGISTRO, UMIDADE, TEMPERATURA, PH, OBSERVACOES) 
+                    VALUES (:1, :2, :3, :4, :5, :6, TO_DATE(:7, 'YYYY-MM-DD"T"HH24:MI:SS'), :8, :9, :10, :11)
+                """
+                # Executar a consulta SQL para cada registro
+                cursor.execute(consulta, (
+                    registro_filtrado['NOME_PRODUTO'], registro_filtrado['TIPO_PRODUTO'],
+                    registro_filtrado['QUANTIDADE'], registro_filtrado['SILO_NOME'],
+                    registro_filtrado['ENDERECO'], registro_filtrado['CAPACIDADE'],
+                    registro_filtrado['DATA_HORA_REGISTRO'], registro_filtrado['UMIDADE'],
+                    registro_filtrado['TEMPERATURA'], registro_filtrado['PH'],
+                    registro_filtrado['OBSERVACOES']
+                ))
+
+            # Confirmar a transação no banco de dados
             conn.commit()
 
         print("Backup restaurado com sucesso!")
 
-    except FileNotFoundError:
-        print("Arquivo de backup não encontrado.")
+    except (FileNotFoundError, ValueError) as e:
+        print(f"Erro: {e}")
     except oracledb.DatabaseError as e:
-        print(f"Erro ao acessar o banco de dados: {e}")
+        print(f"Erro no banco de dados: {e}")
     except Exception as e:
         print(f"Erro inesperado: {e}")
-"""
 
-def restaurar_backup():
-    """
-    global conectado
-    try:
-        diretorio_raiz = os.path.dirname(os.path.abspath(__file__))
-        caminho = os.path.join(diretorio_raiz, 'arquivos', 'backup.json')
-
-        with open(caminho, "r") as arquivo_json:
-            lista_dicionarios = json.load(arquivo_json)
-
-        for registro in lista_dicionarios:
-            consulta = f"" "
-            INSERT INTO SILOS (id, nome_produto, tipo_produto, quantidade, silo_nome, endereco, capacidade,
-            data_hora_registro, umidade, temperatura, ph, observacoes)
-            VALUES ({registro['id']}, '{registro['nome_produto']}', {registro['tipo_produto']},
-            {registro['quantidade']}, '{registro['silo_nome']}',   '{registro['endereco']}',
-            {registro['capacidade']}, '{registro['data_hora_registro']}',
-            {registro['umidade']}, {registro['temperatura']}, {registro['ph']},
-            '{registro['observacoes']}')
-            "" "
-
-            inst_consulta.execute(consulta)
-
-        conn.commit()
-        print("Backup restaurado com sucesso!")
-
-    except FileNotFoundError:
-        print("Arquivo de backup não encontrado.")
-    except oracledb.DatabaseError as e:
-        print("Erro ao acessar o banco de dados:", e)
-        conectado = False
-    except Exception as e:
-        print("Erro inesperado:", e)
-    """

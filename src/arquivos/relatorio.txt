@@ -1,4 +1,0 @@
-Relatório dos silos: 
-
-    * Listagem de silos:
-Não há registros no banco de dados

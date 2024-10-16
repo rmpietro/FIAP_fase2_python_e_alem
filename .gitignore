@@ -2,3 +2,8 @@
 *.tsv
 *.xls
 *.xlsx
+
+.idea/
+src/__pycache__/
+src/arquivos/*.txt
+
