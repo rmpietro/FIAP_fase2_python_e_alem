@@ -26,7 +26,6 @@
 
 ## 📜 Descrição
 
-Descrição
 O agronegócio desempenha um papel crucial na economia brasileira, representando cerca de 25% do PIB total em 2023 e 49% das exportações do país. Com a produção estimada em aproximadamente 300 milhões de toneladas de grãos anualmente, segundo dados da Companhia Nacional de Abastecimento (Conab), é vital que a eficiência no armazenamento e manejo desses produtos seja garantida.
 Infelizmente, problemas de armazenamento podem resultar em perdas significativas, que variam de 5% a 15% da produção total. Com isso em mente, nosso projeto visa desenvolver um Sistema de Gerenciamento de Silos que otimize o controle e a qualidade dos grãos armazenados.
 Este sistema permitirá o registro e monitoramento de dados essenciais, como umidade, temperatura e pH dos grãos, possibilitando que os produtores tenham uma visão clara da qualidade dos produtos armazenados. Através da coleta e análise dessas informações, o sistema buscará reduzir as perdas, contribuindo assim para uma gestão mais eficiente e sustentável.
